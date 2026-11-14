@@ -77,3 +77,14 @@ async def verify(
     log_decision(response)
 
     return response
+
+@app.post("/enroll")
+async def enroll(
+    name: str = Form(...),
+    image: UploadFile = File(...)
+):
+    return {
+        "ok": True,
+        "message": f"Enrolled {name} successfully (mock)",
+        "name": name
+    }
