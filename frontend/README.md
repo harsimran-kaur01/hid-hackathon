@@ -11,11 +11,11 @@ Open http://localhost:5173 in Chrome or Edge and allow camera access.
 Edit `.env`:
 - `VITE_USE_MOCK=false`  -> talk to the real FastAPI backend
 - `VITE_USE_MOCK=true`   -> fake ALLOW / STEP_UP / DENY cycle, no backend needed
-- `VITE_API_URL=http://localhost:8000`
+- `VITE_API_URL=http://localhost:8001`
 Restart `npm run dev` after changing `.env`.
 
 ## FastAPI must provide
-- `POST /verify`  form fields: `image` (JPEG file), `bbox` (JSON string {x,y,w,h})
+- `POST /verify`  form fields: `frames` (one or more JPEG files), `image` (last JPEG fallback), `bbox` (JSON string {x,y,w,h})
   returns `{decision, reason, spoof:{label,score}, identity:{name,similarity}, latency_ms, mode}`
   where decision is ALLOW | DENY | STEP_UP
 - `POST /enroll`  form fields: `name`, `image` (JPEG file)  -> any JSON

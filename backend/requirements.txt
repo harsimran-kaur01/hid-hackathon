@@ -4,6 +4,10 @@ python-multipart==0.0.9
 pillow==10.4.0
 pydantic==2.8.2
 insightface==0.7.3
+onnx==1.16.1
 onnxruntime
 opencv-python
 numpy
+torch
+mediapipe==0.10.14
+protobuf==4.25.9

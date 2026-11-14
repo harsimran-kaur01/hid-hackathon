@@ -1,13 +1,26 @@
 import time
 import uuid
 import json
+from pathlib import Path
+from typing import List, Optional
+
+import cv2
+import numpy as np
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
 
-from models_interface import detect_spoof, identify_face
-from decision_engine import make_decision
-from audit import init_db, log_decision
+try:
+    from models_interface import detect_spoof, identify_face
+    from person3_identity.identity import enroll_person, get_recognizer
+except ModuleNotFoundError:
+    from backend.models_interface import detect_spoof, identify_face
+    from backend.person3_identity.identity import enroll_person, get_recognizer
+try:
+    from decision_engine import make_decision
+    from audit import init_db, log_decision
+except ModuleNotFoundError:
+    from backend.decision_engine import make_decision
+    from backend.audit import init_db, log_decision
 
 # Simple mode flag (will become more intelligent later)
 CURRENT_MODE = "online"
@@ -25,6 +38,7 @@ app.add_middleware(
 
 # Initialize database on startup
 init_db()
+get_recognizer().load_gallery(Path(__file__).with_name("gallery.pkl"))
 
 
 @app.get("/health")
@@ -37,14 +51,18 @@ def health():
 
 @app.post("/verify")
 async def verify(
-    image: UploadFile = File(...),
-    bbox: str = Form(...)
+    image: Optional[UploadFile] = File(None),
+    bbox: str = Form(...),
+    frames: Optional[List[UploadFile]] = File(None),
 ):
     start_time = time.perf_counter()
     request_id = str(uuid.uuid4())
 
     # ----- Validate inputs -----
-    if not image.content_type.startswith("image/"):
+    uploads = frames or ([image] if image else [])
+    if not uploads:
+        raise HTTPException(status_code=400, detail="At least one image is required")
+    if any(not upload.content_type or not upload.content_type.startswith("image/") for upload in uploads):
         raise HTTPException(status_code=400, detail="File must be an image")
 
     try:
@@ -55,11 +73,10 @@ async def verify(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid bbox JSON. Expected {x,y,w,h}")
 
-    # Read image bytes
-    image_bytes = await image.read()
+    frame_bytes = [await upload.read() for upload in uploads]
+    image_bytes = frame_bytes[-1]
 
-    # ----- Run mocks (replace later with real models) -----
-    spoof_result = detect_spoof(image_bytes, bbox_data)
+    spoof_result = detect_spoof(image_bytes, bbox_data, frame_bytes)
     identity_result = identify_face(image_bytes, bbox_data)
 
     # ----- Decision -----
@@ -89,10 +106,22 @@ async def enroll(
     name: str = Form(...),
     image: UploadFile = File(...)
 ):
+    if not image.content_type or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    image_bytes = await image.read()
+    decoded = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if decoded is None:
+        raise HTTPException(status_code=400, detail="Unable to decode image")
+    clean_name = name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Name must not be empty")
+    if not enroll_person(clean_name, decoded):
+        raise HTTPException(status_code=422, detail="No face found in image")
+    get_recognizer().save_gallery(Path(__file__).with_name("gallery.pkl"))
     return {
         "ok": True,
-        "message": f"Enrolled {name} successfully (mock)",
-        "name": name
+        "message": f"Enrolled {clean_name} successfully",
+        "name": clean_name
     }
 
 @app.post("/set-mode")

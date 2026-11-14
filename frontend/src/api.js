@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+export const API = import.meta.env.VITE_API_URL || "http://localhost:8001";
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 const TIMEOUT_MS = 5000;
 
@@ -35,7 +35,9 @@ export async function verify(blob, bbox, gateId = "main-gate") {
     return { ...m, request_id: requestId, latency_ms: Math.round(performance.now() - t0), mode: "online" };
   }
   const fd = new FormData();
-  fd.append("image", blob, "frame.jpg");
+  const frameBlobs = Array.isArray(blob) ? blob : [blob];
+  frameBlobs.forEach((frame, index) => fd.append("frames", frame, `frame-${index}.jpg`));
+  fd.append("image", frameBlobs[frameBlobs.length - 1], "frame.jpg");
   fd.append("bbox", JSON.stringify(bbox));
   fd.append("gate_id", gateId);
   fd.append("request_id", requestId);

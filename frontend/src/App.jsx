@@ -97,6 +97,7 @@ export default function App() {
             <FaceCamera
               onCapture={handleCapture}
               disabled={busy}
+              captureSequence
               auto={live}
               autoMs={LIVE_INTERVAL_MS}
               onFaceChange={handleFaceChange}

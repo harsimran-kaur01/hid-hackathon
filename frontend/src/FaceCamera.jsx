@@ -7,7 +7,7 @@ const MODEL =
 
 export default function FaceCamera({
   onCapture, disabled, buttonLabel = "Verify", hint,
-  auto = false, autoMs = 1500, onFaceChange,
+  auto = false, autoMs = 1500, onFaceChange, captureSequence = false,
 }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -91,15 +91,32 @@ export default function FaceCamera({
     };
   }, []);
 
-  function capture() {
-    const video = videoRef.current;
+  function captureFrame() {
     const bbox = boxRef.current;
-    if (!video || !bbox) return;
+    const video = videoRef.current;
+    if (!video || !bbox) return null;
     const c = document.createElement("canvas");
     c.width = video.videoWidth;
     c.height = video.videoHeight;
     c.getContext("2d").drawImage(video, 0, 0); // not mirrored: models get the true image
-    c.toBlob((blob) => latest.current.onCapture(blob, bbox), "image/jpeg", 0.85);
+    return new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.85));
+  }
+
+  async function capture() {
+    const bbox = boxRef.current;
+    if (!bbox) return;
+    if (!captureSequence) {
+      const blob = await captureFrame();
+      if (blob) latest.current.onCapture(blob, bbox);
+      return;
+    }
+    const frames = [];
+    for (let i = 0; i < 8; i += 1) {
+      const frame = await captureFrame();
+      if (frame) frames.push(frame);
+      if (i < 7) await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+    if (frames.length) latest.current.onCapture(frames, bbox);
   }
 
   // Live scan: send a frame every autoMs while a face is visible and no request is running
