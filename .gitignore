@@ -16,7 +16,6 @@ build/
 
 # ===== Node / Frontend =====
 node_modules/
-dist/
 dist-ssr/
 *.local
 .npm
@@ -62,3 +61,15 @@ temp/
 
 # ===== Vite =====
 .vite/
+
+# ===== Project Data =====
+data/
+data_ext/
+enrolled/
+
+# ===== Video Files =====
+*.mp4
+*.MOV
+
+# ===== CSV Files =====
+*.csv
