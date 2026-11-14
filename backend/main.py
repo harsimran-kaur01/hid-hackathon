@@ -5,9 +5,12 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
-from mocks import mock_spoof_detection, mock_identity_recognition
+from models_interface import detect_spoof, identify_face
 from decision_engine import make_decision
 from audit import init_db, log_decision
+
+# Simple mode flag (will become more intelligent later)
+CURRENT_MODE = "online"
 
 app = FastAPI(title="EchoGate Backend – Person 4", version="0.1.0")
 
@@ -26,8 +29,11 @@ init_db()
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "EchoGate-Person4"}
-
+    return {
+        "status": "ok",
+        "service": "EchoGate-Person4",
+        "mode": CURRENT_MODE
+    }
 
 @app.post("/verify")
 async def verify(
@@ -53,8 +59,8 @@ async def verify(
     image_bytes = await image.read()
 
     # ----- Run mocks (replace later with real models) -----
-    spoof_result = mock_spoof_detection(image_bytes, bbox_data)
-    identity_result = mock_identity_recognition(image_bytes, bbox_data)
+    spoof_result = detect_spoof(image_bytes, bbox_data)
+    identity_result = identify_face(image_bytes, bbox_data)
 
     # ----- Decision -----
     decision_result = make_decision(spoof_result, identity_result)
@@ -88,3 +94,11 @@ async def enroll(
         "message": f"Enrolled {name} successfully (mock)",
         "name": name
     }
+
+@app.post("/set-mode")
+def set_mode(mode: str = Form(...)):
+    global CURRENT_MODE
+    if mode not in ("online", "offline"):
+        raise HTTPException(400, "mode must be 'online' or 'offline'")
+    CURRENT_MODE = mode
+    return {"mode": CURRENT_MODE}
