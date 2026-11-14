@@ -3,10 +3,17 @@ const STYLE = {
   STEP_UP: { cls: "stepup", title: "Extra verification needed" },
   DENY:    { cls: "deny", title: "Access denied" },
 };
-
 const pct = (n) => `${Math.round((n ?? 0) * 100)}%`;
 
-export default function ResultPanel({ result, onReset }) {
+export default function ResultPanel({ result, checking }) {
+  if (!result) {
+    return (
+      <div className="result idle">
+        <h1>{checking ? "Checking…" : "Waiting for a face"}</h1>
+        <p className="reason">Biometric results appear here.</p>
+      </div>
+    );
+  }
   const s = STYLE[result.decision] ?? STYLE.DENY;
   const fast = result.latency_ms <= 2000;
   return (
@@ -29,15 +36,11 @@ export default function ResultPanel({ result, onReset }) {
 
       <p className="latency">
         Decision time {(result.latency_ms / 1000).toFixed(2)} s {fast ? "(within 2 s)" : "(over 2 s)"}
-        {result.mode ? ` · ${result.mode} mode` : ""}
+        {checking ? " · updating…" : ""}
       </p>
-
       {result.decision === "STEP_UP" && (
-        <p className="hint">Move to better light, face the camera directly and try again.</p>
+        <p className="hint">Move to better light, face the camera directly and hold still.</p>
       )}
-      <button className="primary" onClick={onReset}>
-        {result.decision === "STEP_UP" ? "Capture again" : "Verify next person"}
-      </button>
     </div>
   );
 }
