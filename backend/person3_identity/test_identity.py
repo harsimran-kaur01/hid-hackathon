@@ -1,26 +1,37 @@
+
 import cv2
+from pathlib import Path
 from identity import get_recognizer, identify_face, enroll_person
+
+# Get the current script folder
+BASE_DIR = Path(__file__).parent
 
 print("Loading recognizer...")
 rec = get_recognizer()
-print("Ready!\n")
+print("Recognizer loaded successfully!\n")
 
-# ========== HOW TO USE ==========
-# 1. Put some clear face photos in this folder (or give full path)
-# 2. Change the filenames below to your actual image names
+# Load images
+img1 = cv2.imread(str(BASE_DIR / "img1.jpeg"))
+img2 = cv2.imread(str(BASE_DIR / "img2.jpeg"))
+img3 = cv2.imread(str(BASE_DIR / "img3.jpeg"))
 
-# Example enrollment (uncomment and change paths when you have images)
-# enroll_person("Alice", cv2.imread("alice.jpg"))
-# enroll_person("Bob",   cv2.imread("bob.jpg"))
+# Check images
+if any(img is None for img in [img1, img2, img3]):
+    raise FileNotFoundError("Check that img1.jpeg, img2.jpeg and img3.jpeg exist in this folder.")
 
-# Example identification
-# result = identify_face(cv2.imread("test.jpg"))
-# print(result)
+print("All images loaded successfully!\n")
 
-print("Module is ready.")
-print("To enroll someone:")
-print('  enroll_person("Name", cv2.imread("photo.jpg"))')
-print()
-print("To identify a face:")
-print('  result = identify_face(cv2.imread("photo.jpg"))')
-print('  print(result)')
+# Enroll two people
+print("Enrolling people...")
+print("Person A:", enroll_person("Person_A", img1))
+print("Person B:", enroll_person("Person_B", img2))
+
+# Identify enrolled person
+print("\nTesting enrolled person:")
+print(identify_face(img1))
+
+# Identify a new person
+print("\nTesting unknown person:")
+print(identify_face(img3))
+
+print("\nIdentity recognition test completed.")
